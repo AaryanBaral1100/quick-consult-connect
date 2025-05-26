@@ -1,271 +1,257 @@
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, Clock, User, Mail, Phone } from "lucide-react";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
-import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import React, { useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Calendar, Clock, User, Mail, Phone, FileText } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import Navbar from '@/components/Navbar';
+import Footer from '@/components/Footer';
 
 const Appointment = () => {
-  const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    date: "",
-    timeSlot: "",
-    notes: ""
+    name: '',
+    email: '',
+    phone: '',
+    preferred_date: '',
+    time_slot: '',
+    notes: ''
   });
+  const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
+
+  const timeSlots = [
+    '9:00 AM - 9:30 AM',
+    '9:30 AM - 10:00 AM',
+    '10:00 AM - 10:30 AM',
+    '10:30 AM - 11:00 AM',
+    '11:00 AM - 11:30 AM',
+    '11:30 AM - 12:00 PM',
+    '2:00 PM - 2:30 PM',
+    '2:30 PM - 3:00 PM',
+    '3:00 PM - 3:30 PM',
+    '3:30 PM - 4:00 PM',
+    '4:00 PM - 4:30 PM',
+    '4:30 PM - 5:00 PM'
+  ];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-    
+    setLoading(true);
+
     try {
-      // Save appointment to Supabase
+      // Save appointment to database
       const { data, error } = await supabase
         .from('appointments')
-        .insert([
-          {
-            name: formData.name,
-            email: formData.email,
-            phone: formData.phone,
-            preferred_date: formData.date,
-            time_slot: formData.timeSlot,
-            notes: formData.notes
-          }
-        ])
+        .insert([formData])
         .select()
         .single();
 
-      if (error) {
-        console.error('Error saving appointment:', error);
-        toast({
-          title: "Error",
-          description: "Failed to book appointment. Please try again.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      console.log('Appointment saved:', data);
+      if (error) throw error;
 
       // Send confirmation email
       try {
-        const emailResponse = await fetch('/api/send-appointment-confirmation', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
+        await supabase.functions.invoke('send-appointment-confirmation', {
+          body: {
             name: formData.name,
             email: formData.email,
-            date: formData.date,
-            timeSlot: formData.timeSlot,
-          }),
+            date: formData.preferred_date,
+            timeSlot: formData.time_slot
+          }
         });
-
-        if (!emailResponse.ok) {
-          console.error('Email sending failed');
-          // Don't show error to user as appointment was still saved
-        }
       } catch (emailError) {
-        console.error('Email error:', emailError);
-        // Don't show error to user as appointment was still saved
+        console.error('Email sending failed:', emailError);
+        // Don't block the appointment if email fails
       }
 
       toast({
         title: "Appointment Booked!",
         description: "We've received your appointment request. We'll contact you soon to confirm.",
       });
-      
+
       // Reset form
       setFormData({
-        name: "",
-        email: "",
-        phone: "",
-        date: "",
-        timeSlot: "",
-        notes: ""
+        name: '',
+        email: '',
+        phone: '',
+        preferred_date: '',
+        time_slot: '',
+        notes: ''
       });
 
-    } catch (error) {
-      console.error('Unexpected error:', error);
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: "An unexpected error occurred. Please try again.",
+        description: error.message || "Failed to book appointment. Please try again.",
         variant: "destructive",
       });
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  const handleInputChange = (field: string, value: string) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [field]: value
+      [name]: value
     }));
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <Navbar />
       
-      <div className="container mx-auto px-4 py-12">
+      <div className="container mx-auto px-4 py-16">
         <div className="max-w-2xl mx-auto">
-          {/* Header */}
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-blue-900 mb-4">Book Your Free Consultation</h1>
-            <p className="text-gray-600">
-              Schedule a consultation with our expert counselors to discuss your education goals.
+            <h1 className="text-4xl font-bold text-gray-900 mb-4">
+              Book Your Free Consultation
+            </h1>
+            <p className="text-xl text-gray-600">
+              Schedule a 30-minute consultation with our education experts
             </p>
           </div>
 
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Calendar className="h-5 w-5 text-yellow-500" />
-                <span>Appointment Details</span>
+              <CardTitle className="flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-blue-600" />
+                Appointment Details
               </CardTitle>
               <CardDescription>
-                Please fill out the form below and we'll get back to you within 24 hours.
+                Fill out the form below to schedule your consultation
               </CardDescription>
             </CardHeader>
-            
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Personal Information */}
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="name" className="flex items-center space-x-2">
-                      <User className="h-4 w-4" />
-                      <span>Full Name *</span>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="name" className="flex items-center gap-2">
+                      <User className="w-4 h-4" />
+                      Full Name *
                     </Label>
                     <Input
                       id="name"
+                      name="name"
                       value={formData.name}
-                      onChange={(e) => handleInputChange("name", e.target.value)}
-                      placeholder="Enter your full name"
+                      onChange={handleInputChange}
                       required
-                      disabled={isLoading}
+                      placeholder="Enter your full name"
                     />
                   </div>
-                  
-                  <div>
-                    <Label htmlFor="email" className="flex items-center space-x-2">
-                      <Mail className="h-4 w-4" />
-                      <span>Email Address *</span>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="email" className="flex items-center gap-2">
+                      <Mail className="w-4 h-4" />
+                      Email Address *
                     </Label>
                     <Input
                       id="email"
+                      name="email"
                       type="email"
                       value={formData.email}
-                      onChange={(e) => handleInputChange("email", e.target.value)}
-                      placeholder="Enter your email"
+                      onChange={handleInputChange}
                       required
-                      disabled={isLoading}
+                      placeholder="Enter your email"
                     />
                   </div>
                 </div>
 
-                <div>
-                  <Label htmlFor="phone" className="flex items-center space-x-2">
-                    <Phone className="h-4 w-4" />
-                    <span>Phone Number *</span>
+                <div className="space-y-2">
+                  <Label htmlFor="phone" className="flex items-center gap-2">
+                    <Phone className="w-4 h-4" />
+                    Phone Number
                   </Label>
                   <Input
                     id="phone"
-                    type="tel"
+                    name="phone"
                     value={formData.phone}
-                    onChange={(e) => handleInputChange("phone", e.target.value)}
+                    onChange={handleInputChange}
                     placeholder="Enter your phone number"
-                    required
-                    disabled={isLoading}
                   />
                 </div>
 
-                {/* Appointment Scheduling */}
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="date">Preferred Date *</Label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="preferred_date" className="flex items-center gap-2">
+                      <Calendar className="w-4 h-4" />
+                      Preferred Date *
+                    </Label>
                     <Input
-                      id="date"
+                      id="preferred_date"
+                      name="preferred_date"
                       type="date"
-                      value={formData.date}
-                      onChange={(e) => handleInputChange("date", e.target.value)}
-                      min={new Date().toISOString().split('T')[0]}
+                      value={formData.preferred_date}
+                      onChange={handleInputChange}
                       required
-                      disabled={isLoading}
+                      min={new Date().toISOString().split('T')[0]}
                     />
                   </div>
-                  
-                  <div>
-                    <Label htmlFor="timeSlot" className="flex items-center space-x-2">
-                      <Clock className="h-4 w-4" />
-                      <span>Preferred Time *</span>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="time_slot" className="flex items-center gap-2">
+                      <Clock className="w-4 h-4" />
+                      Preferred Time *
                     </Label>
-                    <Select onValueChange={(value) => handleInputChange("timeSlot", value)} disabled={isLoading}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select time slot" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="9:00-10:00">9:00 AM - 10:00 AM</SelectItem>
-                        <SelectItem value="10:00-11:00">10:00 AM - 11:00 AM</SelectItem>
-                        <SelectItem value="11:00-12:00">11:00 AM - 12:00 PM</SelectItem>
-                        <SelectItem value="14:00-15:00">2:00 PM - 3:00 PM</SelectItem>
-                        <SelectItem value="15:00-16:00">3:00 PM - 4:00 PM</SelectItem>
-                        <SelectItem value="16:00-17:00">4:00 PM - 5:00 PM</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <select
+                      id="time_slot"
+                      name="time_slot"
+                      value={formData.time_slot}
+                      onChange={handleInputChange}
+                      required
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    >
+                      <option value="">Select a time slot</option>
+                      {timeSlots.map((slot) => (
+                        <option key={slot} value={slot}>
+                          {slot}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 
-                <div>
-                  <Label htmlFor="notes">Additional Notes</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="notes" className="flex items-center gap-2">
+                    <FileText className="w-4 h-4" />
+                    Additional Notes
+                  </Label>
                   <Textarea
                     id="notes"
+                    name="notes"
                     value={formData.notes}
-                    onChange={(e) => handleInputChange("notes", e.target.value)}
-                    placeholder="Tell us about your education goals, preferred countries, or any specific questions..."
+                    onChange={handleInputChange}
+                    placeholder="Tell us about your education goals or any specific questions you have..."
                     rows={4}
-                    disabled={isLoading}
                   />
                 </div>
 
                 <Button 
                   type="submit" 
-                  className="w-full bg-yellow-500 hover:bg-yellow-400 text-blue-900 font-semibold"
-                  disabled={isLoading || !formData.name || !formData.email || !formData.phone || !formData.date || !formData.timeSlot}
+                  className="w-full" 
+                  size="lg"
+                  disabled={loading}
                 >
-                  {isLoading ? "Booking..." : "Book Consultation"}
+                  {loading ? 'Booking...' : 'Book Free Consultation'}
                 </Button>
               </form>
-            </CardContent>
-          </Card>
 
-          {/* Additional Info */}
-          <div className="mt-8 text-center">
-            <Card className="bg-blue-900 text-white">
-              <CardContent className="p-6">
-                <h3 className="text-lg font-semibold mb-2">What to Expect</h3>
-                <ul className="text-left space-y-2 text-gray-200">
-                  <li>• Free 30-minute consultation</li>
+              <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+                <h3 className="font-semibold text-blue-900 mb-2">What to Expect:</h3>
+                <ul className="text-sm text-blue-800 space-y-1">
                   <li>• Personalized education pathway discussion</li>
                   <li>• University and country recommendations</li>
-                  <li>• Scholarship opportunities</li>
+                  <li>• Scholarship opportunities guidance</li>
+                  <li>• Visa and application process overview</li>
                   <li>• Next steps planning</li>
                 </ul>
-              </CardContent>
-            </Card>
-          </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
 

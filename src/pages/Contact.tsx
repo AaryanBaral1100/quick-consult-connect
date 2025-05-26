@@ -1,200 +1,182 @@
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Mail, Phone, MapPin, Clock, Send } from "lucide-react";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
-import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import React, { useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Mail, Phone, MapPin, Send, User } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import Navbar from '@/components/Navbar';
+import Footer from '@/components/Footer';
 
 const Contact = () => {
-  const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    message: ""
+    name: '',
+    email: '',
+    phone: '',
+    message: ''
   });
+  const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-    
+    setLoading(true);
+
     try {
-      // Save contact message to Supabase
+      // Save contact message to database
       const { data, error } = await supabase
         .from('contact_messages')
-        .insert([
-          {
-            name: formData.name,
-            email: formData.email,
-            phone: formData.phone,
-            message: formData.message
-          }
-        ])
+        .insert([formData])
         .select()
         .single();
 
-      if (error) {
-        console.error('Error saving contact message:', error);
-        toast({
-          title: "Error",
-          description: "Failed to send message. Please try again.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      console.log('Contact message saved:', data);
+      if (error) throw error;
 
       // Send confirmation email
       try {
-        const emailResponse = await fetch('/api/send-contact-confirmation', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
+        await supabase.functions.invoke('send-contact-confirmation', {
+          body: {
             name: formData.name,
             email: formData.email,
-            message: formData.message,
-          }),
+            message: formData.message
+          }
         });
-
-        if (!emailResponse.ok) {
-          console.error('Email sending failed');
-          // Don't show error to user as message was still saved
-        }
       } catch (emailError) {
-        console.error('Email error:', emailError);
-        // Don't show error to user as message was still saved
+        console.error('Email sending failed:', emailError);
+        // Don't block the contact form if email fails
       }
 
       toast({
         title: "Message Sent!",
         description: "Thank you for contacting us. We'll get back to you within 24 hours.",
       });
-      
+
       // Reset form
       setFormData({
-        name: "",
-        email: "",
-        phone: "",
-        message: ""
+        name: '',
+        email: '',
+        phone: '',
+        message: ''
       });
 
-    } catch (error) {
-      console.error('Unexpected error:', error);
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: "An unexpected error occurred. Please try again.",
+        description: error.message || "Failed to send message. Please try again.",
         variant: "destructive",
       });
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  const handleInputChange = (field: string, value: string) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [field]: value
+      [name]: value
     }));
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <Navbar />
       
-      <div className="container mx-auto px-4 py-12">
+      <div className="container mx-auto px-4 py-16">
         <div className="max-w-6xl mx-auto">
-          {/* Header */}
           <div className="text-center mb-12">
-            <h1 className="text-3xl font-bold text-blue-900 mb-4">Contact Us</h1>
-            <p className="text-gray-600 max-w-2xl mx-auto">
-              Have questions about studying abroad? Our expert counselors are here to help. 
-              Reach out to us and take the first step towards your international education journey.
+            <h1 className="text-4xl font-bold text-gray-900 mb-4">
+              Get in Touch
+            </h1>
+            <p className="text-xl text-gray-600">
+              Have questions about your education journey? We're here to help!
             </p>
           </div>
 
-          <div className="grid lg:grid-cols-2 gap-12">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
             {/* Contact Form */}
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Send className="h-5 w-5 text-yellow-500" />
-                  <span>Send us a Message</span>
+                <CardTitle className="flex items-center gap-2">
+                  <Send className="w-5 h-5 text-blue-600" />
+                  Send us a Message
                 </CardTitle>
                 <CardDescription>
-                  Fill out the form below and we'll respond within 24 hours.
+                  Fill out the form and we'll respond within 24 hours
                 </CardDescription>
               </CardHeader>
-              
               <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-6">
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="name">Full Name *</Label>
-                      <Input
-                        id="name"
-                        value={formData.name}
-                        onChange={(e) => handleInputChange("name", e.target.value)}
-                        placeholder="Enter your full name"
-                        required
-                        disabled={isLoading}
-                      />
-                    </div>
-                    
-                    <div>
-                      <Label htmlFor="email">Email Address *</Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        value={formData.email}
-                        onChange={(e) => handleInputChange("email", e.target.value)}
-                        placeholder="Enter your email"
-                        required
-                        disabled={isLoading}
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="phone">Phone Number</Label>
+                  <div className="space-y-2">
+                    <Label htmlFor="name" className="flex items-center gap-2">
+                      <User className="w-4 h-4" />
+                      Full Name *
+                    </Label>
                     <Input
-                      id="phone"
-                      type="tel"
-                      value={formData.phone}
-                      onChange={(e) => handleInputChange("phone", e.target.value)}
-                      placeholder="Enter your phone number"
-                      disabled={isLoading}
+                      id="name"
+                      name="name"
+                      value={formData.name}
+                      onChange={handleInputChange}
+                      required
+                      placeholder="Enter your full name"
                     />
                   </div>
 
-                  <div>
-                    <Label htmlFor="message">Message *</Label>
+                  <div className="space-y-2">
+                    <Label htmlFor="email" className="flex items-center gap-2">
+                      <Mail className="w-4 h-4" />
+                      Email Address *
+                    </Label>
+                    <Input
+                      id="email"
+                      name="email"
+                      type="email"
+                      value={formData.email}
+                      onChange={handleInputChange}
+                      required
+                      placeholder="Enter your email address"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="phone" className="flex items-center gap-2">
+                      <Phone className="w-4 h-4" />
+                      Phone Number
+                    </Label>
+                    <Input
+                      id="phone"
+                      name="phone"
+                      value={formData.phone}
+                      onChange={handleInputChange}
+                      placeholder="Enter your phone number"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="message">
+                      Message *
+                    </Label>
                     <Textarea
                       id="message"
+                      name="message"
                       value={formData.message}
-                      onChange={(e) => handleInputChange("message", e.target.value)}
-                      placeholder="Tell us about your education goals, questions, or how we can help you..."
-                      rows={6}
+                      onChange={handleInputChange}
                       required
-                      disabled={isLoading}
+                      placeholder="Tell us how we can help you with your education goals..."
+                      rows={6}
                     />
                   </div>
 
                   <Button 
                     type="submit" 
-                    className="w-full bg-yellow-500 hover:bg-yellow-400 text-blue-900 font-semibold"
-                    disabled={isLoading || !formData.name || !formData.email || !formData.message}
+                    className="w-full" 
+                    size="lg"
+                    disabled={loading}
                   >
-                    {isLoading ? "Sending..." : "Send Message"}
+                    {loading ? 'Sending...' : 'Send Message'}
                   </Button>
                 </form>
               </CardContent>
@@ -202,84 +184,86 @@ const Contact = () => {
 
             {/* Contact Information */}
             <div className="space-y-8">
-              {/* Contact Details */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Get in Touch</CardTitle>
+                  <CardTitle>Contact Information</CardTitle>
                   <CardDescription>
-                    Multiple ways to reach our education consultants
+                    Get in touch with us through any of these channels
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center space-x-3">
-                    <Phone className="h-5 w-5 text-yellow-500" />
+                <CardContent className="space-y-6">
+                  <div className="flex items-start gap-4">
+                    <div className="bg-blue-100 p-3 rounded-lg">
+                      <Phone className="w-6 h-6 text-blue-600" />
+                    </div>
                     <div>
-                      <p className="font-medium">Phone</p>
+                      <h3 className="font-semibold text-gray-900">Phone</h3>
                       <p className="text-gray-600">+1 (555) 123-4567</p>
+                      <p className="text-sm text-gray-500">Mon-Fri: 9 AM - 6 PM</p>
+                      <p className="text-sm text-gray-500">Saturday: 10 AM - 4 PM</p>
                     </div>
                   </div>
-                  
-                  <div className="flex items-center space-x-3">
-                    <Mail className="h-5 w-5 text-yellow-500" />
+
+                  <div className="flex items-start gap-4">
+                    <div className="bg-blue-100 p-3 rounded-lg">
+                      <Mail className="w-6 h-6 text-blue-600" />
+                    </div>
                     <div>
-                      <p className="font-medium">Email</p>
+                      <h3 className="font-semibold text-gray-900">Email</h3>
                       <p className="text-gray-600">info@innovaedu.com</p>
+                      <p className="text-sm text-gray-500">We'll respond within 24 hours</p>
                     </div>
                   </div>
-                  
-                  <div className="flex items-center space-x-3">
-                    <MapPin className="h-5 w-5 text-yellow-500" />
+
+                  <div className="flex items-start gap-4">
+                    <div className="bg-blue-100 p-3 rounded-lg">
+                      <MapPin className="w-6 h-6 text-blue-600" />
+                    </div>
                     <div>
-                      <p className="font-medium">Address</p>
-                      <p className="text-gray-600">123 Education Street<br />City, State 12345</p>
+                      <h3 className="font-semibold text-gray-900">Office</h3>
+                      <p className="text-gray-600">
+                        123 Education Street<br />
+                        City, State 12345<br />
+                        United States
+                      </p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              {/* Office Hours */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Clock className="h-5 w-5 text-yellow-500" />
-                    <span>Office Hours</span>
-                  </CardTitle>
+                  <CardTitle>Frequently Asked Questions</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-2">
-                  <div className="flex justify-between">
-                    <span>Monday - Friday</span>
-                    <span className="font-medium">9:00 AM - 6:00 PM</span>
+                <CardContent className="space-y-4">
+                  <div>
+                    <h4 className="font-semibold text-gray-900 mb-2">
+                      What services do you offer?
+                    </h4>
+                    <p className="text-gray-600 text-sm">
+                      We provide comprehensive education consultancy including university admissions, 
+                      visa guidance, scholarship assistance, and career counseling.
+                    </p>
                   </div>
-                  <div className="flex justify-between">
-                    <span>Saturday</span>
-                    <span className="font-medium">10:00 AM - 4:00 PM</span>
+                  
+                  <div>
+                    <h4 className="font-semibold text-gray-900 mb-2">
+                      How much do your services cost?
+                    </h4>
+                    <p className="text-gray-600 text-sm">
+                      We offer a free initial consultation. Our service packages vary based on 
+                      your specific needs and the countries you're interested in.
+                    </p>
                   </div>
-                  <div className="flex justify-between">
-                    <span>Sunday</span>
-                    <span className="font-medium">Closed</span>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Quick Links */}
-              <Card className="bg-blue-900 text-white">
-                <CardContent className="p-6">
-                  <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
-                  <div className="space-y-3">
-                    <Button 
-                      asChild 
-                      variant="outline" 
-                      className="w-full bg-transparent border-white text-white hover:bg-white hover:text-blue-900"
-                    >
-                      <a href="/appointment">Book Free Consultation</a>
-                    </Button>
-                    <Button 
-                      asChild 
-                      variant="outline" 
-                      className="w-full bg-transparent border-white text-white hover:bg-white hover:text-blue-900"
-                    >
-                      <a href="/countries">Explore Countries</a>
-                    </Button>
+                  
+                  <div>
+                    <h4 className="font-semibold text-gray-900 mb-2">
+                      Which countries do you cover?
+                    </h4>
+                    <p className="text-gray-600 text-sm">
+                      We help students apply to universities in the US, Canada, UK, Australia, 
+                      Germany, New Zealand, and many other countries worldwide.
+                    </p>
                   </div>
                 </CardContent>
               </Card>
