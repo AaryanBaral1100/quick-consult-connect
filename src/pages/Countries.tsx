@@ -1,157 +1,224 @@
 
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { GraduationCap, DollarSign, Clock, Users } from "lucide-react";
+import { Globe, MapPin, GraduationCap, Users } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+
+interface Country {
+  id: string;
+  name: string;
+  description: string;
+  flag_image_url?: string;
+  display_order: number;
+}
 
 const Countries = () => {
-  const countries = [
-    {
-      name: "United States",
-      flag: "🇺🇸",
-      description: "Home to world's top universities with diverse programs and research opportunities.",
-      highlights: ["Harvard, MIT, Stanford", "F-1 Student Visa", "OPT Work Options", "Research Opportunities"],
-      costs: "$30,000 - $70,000/year",
-      duration: "4 years (Bachelor's)"
-    },
-    {
-      name: "United Kingdom",
-      flag: "🇬🇧",
-      description: "Rich academic heritage with shorter degree programs and post-study work options.",
-      highlights: ["Oxford, Cambridge", "Tier 4 Student Visa", "Graduate Route Visa", "3-year Bachelor's"],
-      costs: "£15,000 - £40,000/year",
-      duration: "3 years (Bachelor's)"
-    },
-    {
-      name: "Canada",
-      flag: "🇨🇦",
-      description: "Quality education with affordable costs and excellent immigration pathways.",
-      highlights: ["University of Toronto", "Study Permit", "PGWP Available", "PR Pathways"],
-      costs: "CAD 20,000 - 35,000/year",
-      duration: "4 years (Bachelor's)"
-    },
-    {
-      name: "Australia",
-      flag: "🇦🇺",
-      description: "High-quality education with great lifestyle and post-study work opportunities.",
-      highlights: ["Melbourne, Sydney Unis", "Student Visa 500", "PSW Visa", "Quality of Life"],
-      costs: "AUD 25,000 - 45,000/year",
-      duration: "3-4 years (Bachelor's)"
-    },
-    {
-      name: "Germany",
-      flag: "🇩🇪",
-      description: "Low-cost education with strong engineering and technology programs.",
-      highlights: ["TU Munich, Heidelberg", "Student Visa", "Job Search Visa", "Low/No Tuition"],
-      costs: "€200 - €3,000/year",
-      duration: "3 years (Bachelor's)"
-    },
-    {
-      name: "New Zealand",
-      flag: "🇳🇿",
-      description: "Quality education in a beautiful environment with friendly immigration policies.",
-      highlights: ["University of Auckland", "Student Visa", "Post-Study Work", "Safe Environment"],
-      costs: "NZD 25,000 - 40,000/year",
-      duration: "3 years (Bachelor's)"
-    }
-  ];
+  const { toast } = useToast();
+  const [countries, setCountries] = useState<Country[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchCountries = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('countries')
+          .select('*')
+          .eq('is_active', true)
+          .order('display_order', { ascending: true });
+
+        if (error) {
+          console.error('Error fetching countries:', error);
+          toast({
+            title: "Error",
+            description: "Failed to load countries. Please try again.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        setCountries(data || []);
+      } catch (error) {
+        console.error('Unexpected error:', error);
+        toast({
+          title: "Error",
+          description: "An unexpected error occurred while loading countries.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchCountries();
+  }, [toast]);
+
+  // Country flag emojis as fallback
+  const getCountryFlag = (countryName: string) => {
+    const flags: { [key: string]: string } = {
+      'United States': '🇺🇸',
+      'Canada': '🇨🇦',
+      'United Kingdom': '🇬🇧',
+      'Australia': '🇦🇺',
+      'Germany': '🇩🇪',
+      'New Zealand': '🇳🇿',
+      'France': '🇫🇷',
+      'Netherlands': '🇳🇱',
+      'Switzerland': '🇨🇭',
+      'Sweden': '🇸🇪'
+    };
+    return flags[countryName] || '🌍';
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+        <div className="container mx-auto px-4 py-12">
+          <div className="text-center">
+            <p className="text-gray-600">Loading countries...</p>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
       
-      <div className="container mx-auto px-4 py-12">
-        {/* Header */}
-        <div className="text-center mb-12">
-          <h1 className="text-3xl font-bold text-blue-900 mb-4">Study Destinations</h1>
-          <p className="text-gray-600 max-w-3xl mx-auto">
-            Explore the best countries for international education. Each destination offers unique opportunities, 
-            academic excellence, and pathways to your future career.
+      {/* Hero Section */}
+      <div className="bg-gradient-to-r from-blue-900 to-blue-700 text-white py-16">
+        <div className="container mx-auto px-4 text-center">
+          <Globe className="h-16 w-16 mx-auto mb-6 text-yellow-400" />
+          <h1 className="text-4xl font-bold mb-4">Study Destinations</h1>
+          <p className="text-xl text-blue-100 max-w-2xl mx-auto">
+            Explore world-class education opportunities across the globe. 
+            We help you find the perfect destination for your academic journey.
           </p>
+        </div>
+      </div>
+
+      <div className="container mx-auto px-4 py-12">
+        {/* Stats Section */}
+        <div className="grid md:grid-cols-3 gap-8 mb-12">
+          <Card className="text-center">
+            <CardContent className="p-6">
+              <MapPin className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
+              <h3 className="text-2xl font-bold text-blue-900 mb-2">{countries.length}+</h3>
+              <p className="text-gray-600">Countries We Serve</p>
+            </CardContent>
+          </Card>
+          
+          <Card className="text-center">
+            <CardContent className="p-6">
+              <GraduationCap className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
+              <h3 className="text-2xl font-bold text-blue-900 mb-2">500+</h3>
+              <p className="text-gray-600">University Partners</p>
+            </CardContent>
+          </Card>
+          
+          <Card className="text-center">
+            <CardContent className="p-6">
+              <Users className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
+              <h3 className="text-2xl font-bold text-blue-900 mb-2">2000+</h3>
+              <p className="text-gray-600">Students Placed</p>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Countries Grid */}
-        <div className="grid lg:grid-cols-2 gap-8">
-          {countries.map((country, index) => (
-            <Card key={index} className="hover:shadow-xl transition-shadow duration-300">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <span className="text-4xl">{country.flag}</span>
-                    <div>
-                      <CardTitle className="text-blue-900">{country.name}</CardTitle>
-                      <CardDescription className="mt-1">
-                        {country.description}
-                      </CardDescription>
-                    </div>
-                  </div>
-                </div>
-              </CardHeader>
-              
-              <CardContent className="space-y-4">
-                {/* Highlights */}
-                <div>
-                  <h4 className="font-semibold text-sm text-gray-700 mb-2">Key Highlights:</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {country.highlights.map((highlight, idx) => (
-                      <Badge key={idx} variant="secondary" className="text-xs">
-                        {highlight}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Stats */}
-                <div className="grid grid-cols-2 gap-4 pt-4 border-t">
-                  <div className="flex items-center space-x-2">
-                    <DollarSign className="h-4 w-4 text-yellow-500" />
-                    <div>
-                      <p className="text-xs text-gray-500">Annual Costs</p>
-                      <p className="font-semibold text-sm">{country.costs}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center space-x-2">
-                    <Clock className="h-4 w-4 text-yellow-500" />
-                    <div>
-                      <p className="text-xs text-gray-500">Duration</p>
-                      <p className="font-semibold text-sm">{country.duration}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <Button 
-                  className="w-full bg-yellow-500 hover:bg-yellow-400 text-blue-900"
-                  onClick={() => window.location.href = '/appointment'}
-                >
-                  <GraduationCap className="mr-2 h-4 w-4" />
-                  Learn More About {country.name}
-                </Button>
+        <div className="mb-8">
+          <h2 className="text-3xl font-bold text-blue-900 text-center mb-8">Popular Study Destinations</h2>
+          
+          {countries.length === 0 ? (
+            <Card>
+              <CardContent className="p-8 text-center">
+                <p className="text-gray-600">No countries available at the moment. Please check back later.</p>
               </CardContent>
             </Card>
-          ))}
+          ) : (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {countries.map((country) => (
+                <Card key={country.id} className="hover:shadow-lg transition-shadow duration-300">
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-3">
+                      <span className="text-4xl">
+                        {country.flag_image_url ? (
+                          <img 
+                            src={country.flag_image_url} 
+                            alt={`${country.name} flag`}
+                            className="w-10 h-8 object-cover rounded"
+                          />
+                        ) : (
+                          getCountryFlag(country.name)
+                        )}
+                      </span>
+                      <span className="text-blue-900">{country.name}</span>
+                    </CardTitle>
+                  </CardHeader>
+                  
+                  <CardContent>
+                    <CardDescription className="text-gray-600 mb-4 line-clamp-3">
+                      {country.description}
+                    </CardDescription>
+                    
+                    <div className="space-y-2 mb-4">
+                      <div className="flex justify-between text-sm">
+                        <span>Application Difficulty:</span>
+                        <span className="font-medium text-green-600">Moderate</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span>Avg. Processing Time:</span>
+                        <span className="font-medium">3-6 months</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span>Work Permit:</span>
+                        <span className="font-medium text-blue-600">Available</span>
+                      </div>
+                    </div>
+                    
+                    <Button 
+                      asChild
+                      className="w-full bg-yellow-500 hover:bg-yellow-400 text-blue-900"
+                    >
+                      <a href="/appointment">Learn More</a>
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* CTA Section */}
-        <div className="mt-16 text-center">
-          <Card className="bg-gradient-to-r from-blue-900 to-yellow-500 text-white">
-            <CardContent className="p-8">
-              <h2 className="text-2xl font-bold mb-4">Not Sure Which Country is Right for You?</h2>
-              <p className="mb-6 opacity-90 max-w-2xl mx-auto">
-                Our expert counselors will help you choose the perfect destination based on your 
-                academic goals, budget, and career aspirations.
-              </p>
-              <Button 
-                size="lg" 
-                className="bg-white text-blue-900 hover:bg-gray-100"
-                onClick={() => window.location.href = '/appointment'}
-              >
-                Get Personalized Guidance
-              </Button>
-            </CardContent>
-          </Card>
+        <div className="text-center bg-blue-900 text-white rounded-lg p-8">
+          <h3 className="text-2xl font-bold mb-4">Ready to Start Your Journey?</h3>
+          <p className="text-blue-100 mb-6 max-w-2xl mx-auto">
+            Book a free consultation with our expert counselors to discuss your education goals 
+            and find the perfect destination for your studies.
+          </p>
+          <div className="space-x-4">
+            <Button 
+              asChild
+              size="lg" 
+              className="bg-yellow-500 hover:bg-yellow-400 text-blue-900"
+            >
+              <a href="/appointment">Book Free Consultation</a>
+            </Button>
+            <Button 
+              asChild
+              variant="outline" 
+              size="lg"
+              className="border-white text-white hover:bg-white hover:text-blue-900"
+            >
+              <a href="/contact">Contact Us</a>
+            </Button>
+          </div>
         </div>
       </div>
 

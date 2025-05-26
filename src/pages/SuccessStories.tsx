@@ -1,189 +1,234 @@
 
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { GraduationCap, Trophy, Target, Calendar } from "lucide-react";
+import { Trophy, MapPin, GraduationCap } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+
+interface SuccessStory {
+  id: string;
+  title: string;
+  description: string;
+  image_url?: string;
+  client_name?: string;
+  destination_country?: string;
+  is_featured: boolean;
+}
 
 const SuccessStories = () => {
-  const stories = [
-    {
-      image: "https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=400&h=300&fit=crop",
-      title: "From Local College to MIT: Sarah's Journey",
-      student: "Sarah Johnson",
-      achievement: "Admitted to MIT with Full Scholarship",
-      country: "USA",
-      year: "2023",
-      description: "Sarah came to us with a dream but limited resources. Through our scholarship guidance program, she secured a full ride to MIT for her Master's in Computer Science.",
-      highlights: ["Full Scholarship Worth $200,000", "GRE Score Improvement: 310 to 335", "5 University Acceptances"],
-      challenge: "Limited financial resources and average test scores",
-      solution: "Intensive test prep, scholarship research, and compelling personal statement crafting"
-    },
-    {
-      image: "https://images.unsplash.com/photo-1541339907198-e08756dedf3f?w=400&h=300&fit=crop",
-      title: "Breaking Barriers: Ahmed's Oxford PhD",
-      student: "Ahmed Rahman",
-      achievement: "PhD at Oxford University",
-      country: "UK",
-      year: "2023",
-      description: "Despite coming from a non-English speaking background, Ahmed secured admission to Oxford's prestigious Engineering PhD program with our comprehensive support.",
-      highlights: ["Oxford University PhD Admission", "Research Funding Secured", "IELTS Score: 6.0 to 8.5"],
-      challenge: "Language barriers and complex PhD application process",
-      solution: "Intensive English training, research proposal development, and interview preparation"
-    },
-    {
-      image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=400&h=300&fit=crop",
-      title: "From Engineer to MBA: Maria's Career Pivot",
-      student: "Maria Garcia",
-      achievement: "MBA at University of Toronto",
-      country: "Canada",
-      year: "2022",
-      description: "Maria successfully transitioned from engineering to business with our career pivot strategy, landing at one of Canada's top MBA programs.",
-      highlights: ["Top 10 MBA Program", "Career Change Success", "$50,000 Scholarship"],
-      challenge: "Career transition from engineering to business",
-      solution: "Strategic profile building, MBA essay optimization, and interview coaching"
-    },
-    {
-      image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=300&fit=crop",
-      title: "Tech Dreams Realized: David's Australian Adventure",
-      student: "David Chen",
-      achievement: "Master's in Data Science at University of Melbourne",
-      country: "Australia",
-      year: "2023",
-      description: "David's passion for data science led him to Melbourne, where he's now excelling in one of Australia's premier tech programs.",
-      highlights: ["Top University Admission", "Internship at Tech Giant", "PR Pathway Secured"],
-      challenge: "Competitive admission requirements and visa complexities",
-      solution: "Portfolio development, application strategy, and visa guidance"
-    },
-    {
-      image: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&h=300&fit=crop",
-      title: "Engineering Excellence: Priya's German Success",
-      student: "Priya Patel",
-      achievement: "Master's at Technical University Munich",
-      country: "Germany",
-      year: "2022",
-      description: "Priya chose Germany for its engineering excellence and affordable education. She's now thriving in one of Europe's top technical universities.",
-      highlights: ["Zero Tuition Fees", "Industry Internship", "German Language Proficiency"],
-      challenge: "Language requirements and cultural adaptation",
-      solution: "German language training, cultural preparation, and ongoing support"
-    },
-    {
-      image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=300&fit=crop",
-      title: "Environmental Champion: James in New Zealand",
-      student: "James Wilson",
-      achievement: "Environmental Science at University of Auckland",
-      country: "New Zealand",
-      year: "2023",
-      description: "James combined his passion for the environment with quality education in New Zealand's stunning natural setting.",
-      highlights: ["Research Opportunities", "Environmental Focus", "Quality of Life"],
-      challenge: "Finding the right program for environmental studies",
-      solution: "Program research, university partnerships, and application optimization"
-    }
-  ];
+  const { toast } = useToast();
+  const [successStories, setSuccessStories] = useState<SuccessStory[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchSuccessStories = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('success_stories')
+          .select('*')
+          .order('display_order', { ascending: true });
+
+        if (error) {
+          console.error('Error fetching success stories:', error);
+          toast({
+            title: "Error",
+            description: "Failed to load success stories. Please try again.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        setSuccessStories(data || []);
+      } catch (error) {
+        console.error('Unexpected error:', error);
+        toast({
+          title: "Error",
+          description: "An unexpected error occurred while loading success stories.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchSuccessStories();
+  }, [toast]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+        <div className="container mx-auto px-4 py-12">
+          <div className="text-center">
+            <p className="text-gray-600">Loading success stories...</p>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  const featuredStories = successStories.filter(story => story.is_featured);
+  const regularStories = successStories.filter(story => !story.is_featured);
 
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
       
-      <div className="container mx-auto px-4 py-12">
-        {/* Header */}
-        <div className="text-center mb-12">
-          <h1 className="text-3xl font-bold text-blue-900 mb-4">Success Stories</h1>
-          <p className="text-gray-600 max-w-3xl mx-auto">
-            Every student's journey is unique. These detailed success stories showcase how our personalized 
-            approach helps students overcome challenges and achieve their international education goals.
+      {/* Hero Section */}
+      <div className="bg-gradient-to-r from-blue-900 to-blue-700 text-white py-16">
+        <div className="container mx-auto px-4 text-center">
+          <Trophy className="h-16 w-16 mx-auto mb-6 text-yellow-400" />
+          <h1 className="text-4xl font-bold mb-4">Success Stories</h1>
+          <p className="text-xl text-blue-100 max-w-2xl mx-auto">
+            Discover inspiring journeys of students who achieved their international education dreams 
+            with our expert guidance and support.
           </p>
         </div>
+      </div>
 
-        {/* Success Stories */}
-        <div className="space-y-12">
-          {stories.map((story, index) => (
-            <Card key={index} className="overflow-hidden hover:shadow-xl transition-shadow duration-300">
-              <div className="grid lg:grid-cols-2 gap-0">
-                {/* Image */}
-                <div className="h-80 lg:h-auto">
-                  <img 
-                    src={story.image} 
-                    alt={story.title}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                
-                {/* Content */}
-                <div className="p-8">
-                  <div className="flex items-center justify-between mb-4">
-                    <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
-                      {story.country} • {story.year}
-                    </Badge>
-                    <Trophy className="h-6 w-6 text-yellow-500" />
-                  </div>
-                  
-                  <h2 className="text-2xl font-bold text-blue-900 mb-2">{story.title}</h2>
-                  <p className="text-lg font-semibold text-gray-700 mb-4">{story.achievement}</p>
-                  
-                  <p className="text-gray-600 mb-6">{story.description}</p>
-                  
-                  {/* Highlights */}
-                  <div className="mb-6">
-                    <h4 className="font-semibold text-blue-900 mb-3 flex items-center">
-                      <Target className="h-4 w-4 mr-2" />
-                      Key Achievements
-                    </h4>
-                    <div className="space-y-2">
-                      {story.highlights.map((highlight, idx) => (
-                        <div key={idx} className="flex items-center space-x-2">
-                          <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                          <span className="text-sm text-gray-700">{highlight}</span>
+      <div className="container mx-auto px-4 py-12">
+        {successStories.length === 0 ? (
+          <Card>
+            <CardContent className="p-8 text-center">
+              <p className="text-gray-600">No success stories available at the moment. Please check back later.</p>
+            </CardContent>
+          </Card>
+        ) : (
+          <>
+            {/* Featured Success Stories */}
+            {featuredStories.length > 0 && (
+              <div className="mb-12">
+                <h2 className="text-3xl font-bold text-blue-900 text-center mb-8">Featured Success Stories</h2>
+                <div className="grid lg:grid-cols-2 gap-8">
+                  {featuredStories.map((story) => (
+                    <Card key={story.id} className="overflow-hidden hover:shadow-xl transition-shadow duration-300">
+                      {story.image_url && (
+                        <div className="h-48 overflow-hidden">
+                          <img
+                            src={story.image_url}
+                            alt={story.title}
+                            className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                          />
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                  
-                  {/* Challenge & Solution */}
-                  <div className="grid md:grid-cols-2 gap-4 mb-6">
-                    <div className="bg-red-50 p-4 rounded-lg">
-                      <h5 className="font-semibold text-red-800 mb-2">Challenge</h5>
-                      <p className="text-sm text-red-700">{story.challenge}</p>
-                    </div>
-                    <div className="bg-green-50 p-4 rounded-lg">
-                      <h5 className="font-semibold text-green-800 mb-2">Our Solution</h5>
-                      <p className="text-sm text-green-700">{story.solution}</p>
-                    </div>
-                  </div>
-                  
-                  <Button 
-                    className="bg-yellow-500 hover:bg-yellow-400 text-blue-900"
-                    onClick={() => window.location.href = '/appointment'}
-                  >
-                    <GraduationCap className="mr-2 h-4 w-4" />
-                    Start Your Success Story
-                  </Button>
+                      )}
+                      <CardHeader>
+                        <CardTitle className="text-blue-900">{story.title}</CardTitle>
+                        <div className="flex items-center space-x-4 text-sm text-gray-600">
+                          {story.client_name && (
+                            <div className="flex items-center space-x-1">
+                              <GraduationCap className="h-4 w-4" />
+                              <span>{story.client_name}</span>
+                            </div>
+                          )}
+                          {story.destination_country && (
+                            <div className="flex items-center space-x-1">
+                              <MapPin className="h-4 w-4" />
+                              <span>{story.destination_country}</span>
+                            </div>
+                          )}
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <CardDescription className="text-gray-700">
+                          {story.description}
+                        </CardDescription>
+                      </CardContent>
+                    </Card>
+                  ))}
                 </div>
               </div>
-            </Card>
-          ))}
+            )}
+
+            {/* Regular Success Stories */}
+            {regularStories.length > 0 && (
+              <div>
+                <h2 className="text-3xl font-bold text-blue-900 text-center mb-8">
+                  {featuredStories.length > 0 ? "More Success Stories" : "Our Success Stories"}
+                </h2>
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                  {regularStories.map((story) => (
+                    <Card key={story.id} className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
+                      {story.image_url && (
+                        <div className="h-40 overflow-hidden">
+                          <img
+                            src={story.image_url}
+                            alt={story.title}
+                            className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                          />
+                        </div>
+                      )}
+                      <CardHeader>
+                        <CardTitle className="text-lg text-blue-900">{story.title}</CardTitle>
+                        <div className="flex items-center justify-between text-xs text-gray-600">
+                          {story.client_name && (
+                            <div className="flex items-center space-x-1">
+                              <GraduationCap className="h-3 w-3" />
+                              <span>{story.client_name}</span>
+                            </div>
+                          )}
+                          {story.destination_country && (
+                            <div className="flex items-center space-x-1">
+                              <MapPin className="h-3 w-3" />
+                              <span>{story.destination_country}</span>
+                            </div>
+                          )}
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <CardDescription className="text-gray-700 text-sm line-clamp-4">
+                          {story.description}
+                        </CardDescription>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Statistics Section */}
+        <div className="mt-16 bg-blue-900 text-white rounded-lg p-8">
+          <h3 className="text-2xl font-bold text-center mb-8">Our Impact in Numbers</h3>
+          <div className="grid md:grid-cols-4 gap-8 text-center">
+            <div>
+              <div className="text-3xl font-bold text-yellow-400 mb-2">2000+</div>
+              <div className="text-blue-200">Students Placed</div>
+            </div>
+            <div>
+              <div className="text-3xl font-bold text-yellow-400 mb-2">500+</div>
+              <div className="text-blue-200">Universities</div>
+            </div>
+            <div>
+              <div className="text-3xl font-bold text-yellow-400 mb-2">15+</div>
+              <div className="text-blue-200">Countries</div>
+            </div>
+            <div>
+              <div className="text-3xl font-bold text-yellow-400 mb-2">95%</div>
+              <div className="text-blue-200">Success Rate</div>
+            </div>
+          </div>
         </div>
 
         {/* CTA Section */}
-        <div className="mt-16 text-center">
-          <Card className="bg-gradient-to-r from-blue-900 to-yellow-500 text-white">
-            <CardContent className="p-8">
-              <h2 className="text-2xl font-bold mb-4">Your Success Story Starts Here</h2>
-              <p className="mb-6 opacity-90 max-w-2xl mx-auto">
-                Every success story began with a single step. Take yours today and let us help you 
-                overcome challenges and achieve your international education dreams.
-              </p>
-              <Button 
-                size="lg" 
-                className="bg-white text-blue-900 hover:bg-gray-100"
-                onClick={() => window.location.href = '/appointment'}
-              >
-                <Calendar className="mr-2 h-5 w-5" />
-                Book Your Free Consultation
-              </Button>
-            </CardContent>
-          </Card>
+        <div className="mt-12 text-center bg-yellow-500 text-blue-900 rounded-lg p-8">
+          <h3 className="text-2xl font-bold mb-4">Ready to Create Your Success Story?</h3>
+          <p className="text-blue-800 mb-6 max-w-2xl mx-auto">
+            Join our community of successful students who have achieved their international education goals. 
+            Let us help you write your own success story.
+          </p>
+          <div className="space-x-4">
+            <Button asChild size="lg" className="bg-blue-900 hover:bg-blue-800 text-white">
+              <a href="/appointment">Book Free Consultation</a>
+            </Button>
+            <Button asChild variant="outline" size="lg" className="border-blue-900 text-blue-900 hover:bg-blue-900 hover:text-white">
+              <a href="/contact">Learn More</a>
+            </Button>
+          </div>
         </div>
       </div>
 

@@ -10,9 +10,11 @@ import { Calendar, Clock, User, Mail, Phone } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const Appointment = () => {
   const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -22,25 +24,88 @@ const Appointment = () => {
     notes: ""
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
     
-    // For now, just show a success message
-    // In a real app, this would save to Supabase
-    toast({
-      title: "Appointment Booked!",
-      description: "We've received your appointment request. We'll contact you soon to confirm.",
-    });
-    
-    // Reset form
-    setFormData({
-      name: "",
-      email: "",
-      phone: "",
-      date: "",
-      timeSlot: "",
-      notes: ""
-    });
+    try {
+      // Save appointment to Supabase
+      const { data, error } = await supabase
+        .from('appointments')
+        .insert([
+          {
+            name: formData.name,
+            email: formData.email,
+            phone: formData.phone,
+            preferred_date: formData.date,
+            time_slot: formData.timeSlot,
+            notes: formData.notes
+          }
+        ])
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error saving appointment:', error);
+        toast({
+          title: "Error",
+          description: "Failed to book appointment. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      console.log('Appointment saved:', data);
+
+      // Send confirmation email
+      try {
+        const emailResponse = await fetch('/api/send-appointment-confirmation', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name: formData.name,
+            email: formData.email,
+            date: formData.date,
+            timeSlot: formData.timeSlot,
+          }),
+        });
+
+        if (!emailResponse.ok) {
+          console.error('Email sending failed');
+          // Don't show error to user as appointment was still saved
+        }
+      } catch (emailError) {
+        console.error('Email error:', emailError);
+        // Don't show error to user as appointment was still saved
+      }
+
+      toast({
+        title: "Appointment Booked!",
+        description: "We've received your appointment request. We'll contact you soon to confirm.",
+      });
+      
+      // Reset form
+      setFormData({
+        name: "",
+        email: "",
+        phone: "",
+        date: "",
+        timeSlot: "",
+        notes: ""
+      });
+
+    } catch (error) {
+      console.error('Unexpected error:', error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -90,6 +155,7 @@ const Appointment = () => {
                       onChange={(e) => handleInputChange("name", e.target.value)}
                       placeholder="Enter your full name"
                       required
+                      disabled={isLoading}
                     />
                   </div>
                   
@@ -105,6 +171,7 @@ const Appointment = () => {
                       onChange={(e) => handleInputChange("email", e.target.value)}
                       placeholder="Enter your email"
                       required
+                      disabled={isLoading}
                     />
                   </div>
                 </div>
@@ -121,6 +188,7 @@ const Appointment = () => {
                     onChange={(e) => handleInputChange("phone", e.target.value)}
                     placeholder="Enter your phone number"
                     required
+                    disabled={isLoading}
                   />
                 </div>
 
@@ -135,6 +203,7 @@ const Appointment = () => {
                       onChange={(e) => handleInputChange("date", e.target.value)}
                       min={new Date().toISOString().split('T')[0]}
                       required
+                      disabled={isLoading}
                     />
                   </div>
                   
@@ -143,7 +212,7 @@ const Appointment = () => {
                       <Clock className="h-4 w-4" />
                       <span>Preferred Time *</span>
                     </Label>
-                    <Select onValueChange={(value) => handleInputChange("timeSlot", value)}>
+                    <Select onValueChange={(value) => handleInputChange("timeSlot", value)} disabled={isLoading}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select time slot" />
                       </SelectTrigger>
@@ -167,14 +236,16 @@ const Appointment = () => {
                     onChange={(e) => handleInputChange("notes", e.target.value)}
                     placeholder="Tell us about your education goals, preferred countries, or any specific questions..."
                     rows={4}
+                    disabled={isLoading}
                   />
                 </div>
 
                 <Button 
                   type="submit" 
                   className="w-full bg-yellow-500 hover:bg-yellow-400 text-blue-900 font-semibold"
+                  disabled={isLoading || !formData.name || !formData.email || !formData.phone || !formData.date || !formData.timeSlot}
                 >
-                  Book Consultation
+                  {isLoading ? "Booking..." : "Book Consultation"}
                 </Button>
               </form>
             </CardContent>
